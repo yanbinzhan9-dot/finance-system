@@ -1,0 +1,5 @@
+data/finance-data.json
+data/uploads/
+__pycache__/
+*.pyc
+.env

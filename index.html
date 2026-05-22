@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>财务系统</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">财</div>
+        <div>
+          <h1>财务系统</h1>
+          <p>亚马逊合伙记账</p>
+        </div>
+      </div>
+      <nav class="nav-tabs" aria-label="主导航">
+        <button class="nav-tab active" data-view="dashboard">看板</button>
+        <button class="nav-tab" data-view="entry">记一笔</button>
+        <button class="nav-tab" data-view="ledger">账目</button>
+        <button class="nav-tab" data-view="settings">设置</button>
+      </nav>
+      <div class="rule-box">
+        <span>投入规则</span>
+        <strong>首期 50 万：詹 60% / 蓝 40%</strong>
+        <strong>超过部分：待双方确认</strong>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="view active" id="dashboard">
+        <div class="dashboard-hero">
+          <div>
+            <p class="eyebrow">实时概览</p>
+            <h2>项目资金驾驶舱</h2>
+            <p class="hero-copy">围绕首期投入、双方实际投入、结算记录和最近流水，保持账面清楚、沟通轻松。</p>
+          </div>
+          <button class="primary-btn" data-jump="entry">新增账目</button>
+        </div>
+
+        <div class="metric-grid">
+          <article class="metric primary-metric">
+            <span>项目累计投入</span>
+            <strong id="metricNetInvestment">¥0.00</strong>
+            <small>支出 - 退款</small>
+          </article>
+          <article class="metric">
+            <span>首期 50 万进度</span>
+            <strong id="metricThresholdProgress">0%</strong>
+            <small id="metricThresholdText">¥0.00 / ¥500,000.00</small>
+          </article>
+          <article class="metric">
+            <span>当前净结果</span>
+            <strong id="metricNetResult">¥0.00</strong>
+            <small>收入 - 净投入</small>
+          </article>
+        </div>
+
+        <div class="dashboard-grid">
+          <section class="panel">
+            <div class="panel-head">
+              <h3>双方投入</h3>
+              <span id="settlementHint">等待记录账目</span>
+            </div>
+            <div class="investment-compare">
+              <div class="compare-head">
+                <span>人员</span>
+                <span>实际投入</span>
+                <span>首期应承担</span>
+                <span>当前差额</span>
+              </div>
+              <div class="compare-row zhan-row">
+                <strong>詹</strong>
+                <div>
+                  <span id="zhanPaid">¥0.00</span>
+                  <div class="bar"><span id="zhanPaidBar"></span></div>
+                </div>
+                <div>
+                  <span id="zhanObligation">¥0.00</span>
+                  <div class="bar muted"><span id="zhanObligationBar"></span></div>
+                </div>
+                <strong id="zhanDiff" class="diff">¥0.00</strong>
+              </div>
+              <div class="compare-row lan-row">
+                <strong>蓝</strong>
+                <div>
+                  <span id="lanPaid">¥0.00</span>
+                  <div class="bar blue-bar"><span id="lanPaidBar"></span></div>
+                </div>
+                <div>
+                  <span id="lanObligation">¥0.00</span>
+                  <div class="bar muted"><span id="lanObligationBar"></span></div>
+                </div>
+                <strong id="lanDiff" class="diff">¥0.00</strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel settlement-panel">
+            <div class="panel-head">
+              <h3>结算记录</h3>
+              <span id="settlementReference">当前参考差额 ¥0.00</span>
+            </div>
+            <div class="settlement-inline">
+              <label>日期<input id="settlementDate" type="date"></label>
+              <label>金额<input id="settlementAmount" type="number" min="0" step="0.01" placeholder="0.00"></label>
+              <label>
+                付款人
+                <select id="settlementFrom">
+                  <option value="蓝">蓝</option>
+                  <option value="詹">詹</option>
+                </select>
+              </label>
+              <label>
+                收款人
+                <select id="settlementTo">
+                  <option value="詹">詹</option>
+                  <option value="蓝">蓝</option>
+                </select>
+              </label>
+              <label class="wide">备注<input id="settlementNote" type="text" placeholder="例如：本次结算"></label>
+              <button class="primary-btn" id="saveSettlementPaymentBtn">记录结算</button>
+              <button class="secondary-btn" id="cancelSettlementEditBtn" type="button">取消修改</button>
+            </div>
+            <div class="mini-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>日期</th>
+                    <th>方向</th>
+                    <th>金额</th>
+                    <th>备注</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="settlementHistoryRows"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h3>最近账目</h3>
+            <button class="text-btn" data-jump="ledger">查看全部</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>日期</th>
+                  <th>类型</th>
+                  <th>人员</th>
+                  <th>ASIN</th>
+                  <th>类目</th>
+                  <th>金额</th>
+                  <th>截图</th>
+                  <th>备注</th>
+                </tr>
+              </thead>
+              <tbody id="recentRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section class="view" id="entry">
+        <div class="page-head">
+          <div>
+            <p class="eyebrow">快速录入</p>
+            <h2 id="entryTitle">记一笔账</h2>
+          </div>
+          <button class="secondary-btn" id="clearFormBtn">清空</button>
+        </div>
+
+        <form class="entry-form panel" id="entryForm">
+          <input type="hidden" id="editingId">
+          <div class="form-grid">
+            <label>
+              日期
+              <input id="entryDate" type="date" required>
+            </label>
+            <label>
+              类型
+              <select id="entryType" required>
+                <option value="expense">支出</option>
+                <option value="income">收入</option>
+                <option value="refund">退款</option>
+                <option value="settlement">结算支付</option>
+                <option value="adjustment">调整</option>
+              </select>
+            </label>
+            <label>
+              经手/支付/收款人
+              <select id="person" required>
+                <option value="詹">詹</option>
+                <option value="蓝">蓝</option>
+              </select>
+            </label>
+            <label>
+              类目
+              <select id="category"></select>
+            </label>
+            <label>
+              金额
+              <input id="amount" type="number" min="0" step="0.01" placeholder="0.00" required>
+            </label>
+            <label>
+              币种
+              <select id="currency">
+                <option value="CNY">人民币</option>
+                <option value="USD">美元</option>
+              </select>
+            </label>
+            <label>
+              汇率
+              <input id="exchangeRate" type="number" min="0" step="0.0001" value="1">
+              <small id="rateHint">人民币账目固定为 1</small>
+            </label>
+            <label>
+              折合人民币
+              <input id="cnyAmount" type="text" readonly>
+            </label>
+            <label class="wide">
+              ASIN
+              <input id="productName" type="text" placeholder="非必填，例如：产品名称、SKU、ASIN">
+            </label>
+            <label class="wide">
+              备注
+              <textarea id="note" rows="3" placeholder="美元账目会自动记录汇率，也可以补充业务说明"></textarea>
+            </label>
+            <label class="wide file-field">
+              凭证
+              <input id="attachments" type="file" accept="image/*" multiple>
+              <span>支持付款截图、发票、合同、后台截图等图片凭证</span>
+            </label>
+          </div>
+          <div id="attachmentPreview" class="attachment-preview"></div>
+          <div class="form-actions">
+            <button type="submit" class="primary-btn">保存账目</button>
+            <button type="button" class="secondary-btn" id="cancelEditBtn">取消编辑</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="view" id="ledger">
+        <div class="page-head">
+          <div>
+            <p class="eyebrow">流水管理</p>
+            <h2>账目列表</h2>
+          </div>
+          <button class="primary-btn" data-jump="entry">新增账目</button>
+        </div>
+
+        <section class="filters panel">
+          <input id="searchInput" type="search" placeholder="搜索备注、ASIN、类目">
+          <select id="filterType">
+            <option value="">全部类型</option>
+            <option value="expense">支出</option>
+            <option value="income">收入</option>
+            <option value="refund">退款</option>
+            <option value="settlement">结算支付</option>
+            <option value="adjustment">调整</option>
+          </select>
+          <select id="filterPerson">
+            <option value="">全部人员</option>
+            <option value="詹">詹</option>
+            <option value="蓝">蓝</option>
+          </select>
+          <select id="filterCurrency">
+            <option value="">全部币种</option>
+            <option value="CNY">人民币</option>
+            <option value="USD">美元</option>
+          </select>
+          <input id="filterStart" type="date">
+          <input id="filterEnd" type="date">
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h3>筛选结果</h3>
+            <span id="filterSummary">0 条</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>日期</th>
+                  <th>类型</th>
+                  <th>人员</th>
+                  <th>ASIN</th>
+                  <th>类目</th>
+                  <th>金额</th>
+                  <th>汇率</th>
+                  <th>截图</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="ledgerRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section class="view" id="settings">
+        <div class="page-head">
+          <div>
+            <p class="eyebrow">规则配置</p>
+            <h2>系统设置</h2>
+          </div>
+        </div>
+
+        <section class="panel settings-grid">
+          <div>
+            <h3>投入规则</h3>
+            <p>首期 ¥500,000：詹承担 60%，蓝承担 40%。超过首期额度的投入规则暂不确定，系统先不自动计算。</p>
+          </div>
+          <div>
+            <h3>利润分配</h3>
+            <p>股比五五分。前期以投入补款结算为主，收入正常记录在看板。</p>
+          </div>
+          <div>
+            <h3>默认值</h3>
+            <p>默认币种人民币；收入、支出和结算都通过“经手/支付/收款人”记录，不再单独设置收款人字段。</p>
+          </div>
+          <div>
+            <h3>本地保存</h3>
+            <p>账目保存在本地数据文件中，截图保存在项目上传目录；不同浏览器打开同一地址会读取同一份数据。</p>
+          </div>
+        </section>
+
+        <section class="panel export-panel">
+          <div class="panel-head">
+            <h3>数据管理</h3>
+            <span>本地备份</span>
+          </div>
+          <div class="form-actions">
+            <button class="secondary-btn" id="exportBtn">导出 JSON</button>
+            <label class="import-btn">
+              导入 JSON
+              <input id="importInput" type="file" accept="application/json">
+            </label>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="imageDialog">
+    <button id="closeImageDialog" aria-label="关闭">×</button>
+    <img id="dialogImage" alt="付款截图预览">
+  </dialog>
+
+  <script src="app.js?v=20260522-13"></script>
+</body>
+</html>

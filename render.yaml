@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: finance-system
+    runtime: python
+    plan: starter
+    buildCommand: ""
+    startCommand: python server.py
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: FINANCE_USER
+        value: zhan
+      - key: FINANCE_PASSWORD
+        sync: false
+    disk:
+      name: finance-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
