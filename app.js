@@ -17,6 +17,10 @@ let pendingAttachments = [];
 let editingAttachments = [];
 let settlementPreviewData = null;
 let editingSettlementId = "";
+let credentialZoom = 1;
+let credentialOffset = { x: 0, y: 0 };
+let credentialDragging = false;
+let credentialDragStart = { x: 0, y: 0 };
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
@@ -244,7 +248,12 @@ function bindEvents() {
   $("#settlementFrom").addEventListener("change", syncSettlementReceiver);
   $("#exportBtn").addEventListener("click", exportData);
   $("#importInput").addEventListener("change", importData);
-  $("#closeImageDialog").addEventListener("click", () => $("#imageDialog").close());
+  $("#closeImageDialog").addEventListener("click", closeCredentialDialog);
+  $("#imageDialog").addEventListener("click", closeCredentialOnBackdrop);
+  $("#imageDialog").addEventListener("wheel", zoomCredential, { passive: false });
+  $("#credentialStage").addEventListener("pointerdown", startCredentialDrag);
+  window.addEventListener("pointermove", dragCredential);
+  window.addEventListener("pointerup", stopCredentialDrag);
 }
 
 function switchView(viewId) {
@@ -295,9 +304,31 @@ async function updateExchangeRateForDate() {
 
 function handleAttachmentFiles(event) {
   const files = Array.from(event.target.files || []);
-  Promise.all(files.map(readAndCompressImage)).then((items) => {
+  Promise.all(files.map(readAttachmentFile)).then((items) => {
     pendingAttachments = items;
     renderAttachmentPreview();
+  });
+}
+
+function readAttachmentFile(file) {
+  if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+    return readFileAsDataUrl(file, "pdf");
+  }
+  return readAndCompressImage(file);
+}
+
+function readFileAsDataUrl(file, kind) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve({
+      id: uid(),
+      name: file.name,
+      type: file.type || (kind === "pdf" ? "application/pdf" : ""),
+      kind,
+      dataUrl: reader.result
+    });
+    reader.onerror = () => resolve({ id: uid(), name: file.name, type: file.type || "", kind, dataUrl: "" });
+    reader.readAsDataURL(file);
   });
 }
 
@@ -317,13 +348,15 @@ function readAndCompressImage(file) {
         resolve({
           id: uid(),
           name: file.name,
+          type: "image/jpeg",
+          kind: "image",
           dataUrl: canvas.toDataURL("image/jpeg", 0.78)
         });
       };
-      image.onerror = () => resolve({ id: uid(), name: file.name, dataUrl: reader.result });
+      image.onerror = () => resolve({ id: uid(), name: file.name, type: file.type || "", kind: getAttachmentKind(file), dataUrl: reader.result });
       image.src = reader.result;
     };
-    reader.onerror = () => resolve({ id: uid(), name: file.name, dataUrl: "" });
+    reader.onerror = () => resolve({ id: uid(), name: file.name, type: file.type || "", kind: "file", dataUrl: "" });
     reader.readAsDataURL(file);
   });
 }
@@ -334,7 +367,7 @@ function attachmentSrc(file) {
 
 function renderAttachmentPreview() {
   const all = [...editingAttachments, ...pendingAttachments];
-  $("#attachmentPreview").innerHTML = all.map((file) => `<img src="${attachmentSrc(file)}" alt="${file.name}">`).join("");
+  $("#attachmentPreview").innerHTML = all.map((file, index) => renderAttachmentThumb(file, `openFormAttachment(${index})`)).join("");
 }
 
 async function saveEntry(event) {
@@ -534,8 +567,38 @@ function renderLedgerRow(entry) {
 
 function renderAttachmentThumbs(entry, limit) {
   return (entry.attachments || []).slice(0, limit).map((file) => {
-    return `<img class="thumb" src="${attachmentSrc(file)}" alt="${file.name}" onclick="openImage('${entry.id}','${file.id}')">`;
+    return renderAttachmentThumb(file, `openImage('${entry.id}','${file.id}')`);
   }).join("");
+}
+
+function renderAttachmentThumb(file, clickAction = "") {
+  const safeName = escapeHtml(file.name || "凭证");
+  const action = clickAction ? ` onclick="${clickAction}"` : "";
+  if (isPdfAttachment(file)) {
+    return `<button type="button" class="thumb thumb-file" title="${safeName}"${action}><span>PDF</span></button>`;
+  }
+  return `<img class="thumb" src="${attachmentSrc(file)}" alt="${safeName}" title="${safeName}"${action}>`;
+}
+
+function isPdfAttachment(file) {
+  const name = (file?.name || file?.url || "").toLowerCase();
+  return file?.kind === "pdf" || file?.type === "application/pdf" || name.endsWith(".pdf");
+}
+
+function getAttachmentKind(file) {
+  if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) return "pdf";
+  if (file.type.startsWith("image/")) return "image";
+  return "file";
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[char]));
 }
 
 function formatEntryAmount(entry) {
@@ -558,8 +621,76 @@ function openImage(entryId, attachmentId) {
   const entry = state.entries.find((item) => item.id === entryId);
   const file = entry?.attachments?.find((item) => item.id === attachmentId);
   if (!file) return;
-  $("#dialogImage").src = attachmentSrc(file);
+  openCredential(file);
+}
+
+function openFormAttachment(index) {
+  const file = [...editingAttachments, ...pendingAttachments][index];
+  if (!file) return;
+  openCredential(file);
+}
+
+function openCredential(file) {
+  resetCredentialView();
+  const src = attachmentSrc(file);
+  $("#dialogImage").style.display = isPdfAttachment(file) ? "none" : "block";
+  $("#dialogPdf").style.display = isPdfAttachment(file) ? "block" : "none";
+  $("#dialogImage").src = isPdfAttachment(file) ? "" : src;
+  $("#dialogPdf").src = isPdfAttachment(file) ? src : "about:blank";
   $("#imageDialog").showModal();
+}
+
+function closeCredentialDialog() {
+  $("#imageDialog").close();
+  $("#dialogImage").src = "";
+  $("#dialogPdf").src = "about:blank";
+}
+
+function closeCredentialOnBackdrop(event) {
+  if (event.target === $("#imageDialog") || event.target === $("#credentialStage")) closeCredentialDialog();
+}
+
+function resetCredentialView() {
+  credentialZoom = 1;
+  credentialOffset = { x: 0, y: 0 };
+  applyCredentialTransform();
+}
+
+function zoomCredential(event) {
+  event.preventDefault();
+  const nextZoom = Math.min(4, Math.max(0.35, credentialZoom + (event.deltaY < 0 ? 0.12 : -0.12)));
+  credentialZoom = Number(nextZoom.toFixed(2));
+  applyCredentialTransform();
+}
+
+function startCredentialDrag(event) {
+  credentialDragging = true;
+  credentialDragStart = {
+    x: event.clientX - credentialOffset.x,
+    y: event.clientY - credentialOffset.y
+  };
+  $("#credentialStage").setPointerCapture?.(event.pointerId);
+  $("#credentialStage").classList.add("dragging");
+}
+
+function dragCredential(event) {
+  if (!credentialDragging) return;
+  credentialOffset = {
+    x: event.clientX - credentialDragStart.x,
+    y: event.clientY - credentialDragStart.y
+  };
+  applyCredentialTransform();
+}
+
+function stopCredentialDrag() {
+  credentialDragging = false;
+  $("#credentialStage")?.classList.remove("dragging");
+}
+
+function applyCredentialTransform() {
+  const stage = $("#credentialStage");
+  if (!stage) return;
+  stage.style.transform = `translate(${credentialOffset.x}px, ${credentialOffset.y}px) scale(${credentialZoom})`;
 }
 
 async function saveSettlementPayment() {

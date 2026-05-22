@@ -60,8 +60,12 @@ def save_attachments(attachments: list) -> list:
             continue
         attachment = {
             "id": str(item.get("id") or uuid.uuid4().hex),
-            "name": str(item.get("name") or "screenshot.jpg"),
+            "name": str(item.get("name") or "credential"),
         }
+        if item.get("type"):
+            attachment["type"] = str(item["type"])
+        if item.get("kind"):
+            attachment["kind"] = str(item["kind"])
         if item.get("url"):
             attachment["url"] = item["url"]
             saved.append(attachment)
@@ -76,6 +80,8 @@ def save_attachments(attachments: list) -> list:
             filename = f"{attachment['id']}{extension}"
             file_path = UPLOAD_DIR / filename
             file_path.write_bytes(base64.b64decode(payload))
+            attachment["type"] = attachment.get("type") or mime_type
+            attachment["kind"] = attachment.get("kind") or ("pdf" if mime_type == "application/pdf" else "image")
             attachment["url"] = f"/data/uploads/{filename}"
             saved.append(attachment)
     return saved

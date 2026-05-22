@@ -156,7 +156,7 @@
                   <th>ASIN</th>
                   <th>类目</th>
                   <th>金额</th>
-                  <th>截图</th>
+                  <th>凭证</th>
                   <th>备注</th>
                 </tr>
               </thead>
@@ -233,8 +233,8 @@
             </label>
             <label class="wide file-field">
               凭证
-              <input id="attachments" type="file" accept="image/*" multiple>
-              <span>支持付款截图、发票、合同、后台截图等图片凭证</span>
+              <input id="attachments" type="file" accept="image/*,application/pdf" multiple>
+              <span>支持付款凭证、发票、合同、后台页面等图片或 PDF 文件</span>
             </label>
           </div>
           <div id="attachmentPreview" class="attachment-preview"></div>
@@ -294,7 +294,7 @@
                   <th>类目</th>
                   <th>金额</th>
                   <th>汇率</th>
-                  <th>截图</th>
+                  <th>凭证</th>
                   <th>操作</th>
                 </tr>
               </thead>
@@ -327,7 +327,7 @@
           </div>
           <div>
             <h3>本地保存</h3>
-            <p>账目保存在本地数据文件中，截图保存在项目上传目录；不同浏览器打开同一地址会读取同一份数据。</p>
+            <p>账目保存在本地数据文件中，凭证保存在项目上传目录；不同浏览器打开同一地址会读取同一份数据。</p>
           </div>
         </section>
 
@@ -350,9 +350,12 @@
 
   <dialog id="imageDialog">
     <button id="closeImageDialog" aria-label="关闭">×</button>
-    <img id="dialogImage" alt="付款截图预览">
+    <div id="credentialStage">
+      <img id="dialogImage" alt="凭证预览">
+      <iframe id="dialogPdf" title="PDF 凭证预览"></iframe>
+    </div>
   </dialog>
 
-  <script src="app.js?v=20260522-13"></script>
+  <script src="app.js?v=20260522-14"></script>
 </body>
 </html>
